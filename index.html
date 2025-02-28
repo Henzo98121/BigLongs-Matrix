@@ -16,6 +16,7 @@
       height: 100vh;
       font-family: monospace;
       position: relative;
+      cursor: none;
     }
     canvas {
       display: block;
@@ -54,6 +55,16 @@
       75% { color: hsl(140, 100%, 50%); }
       100% { color: hsl(120, 100%, 50%); }
     }
+    #mouseCursor {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 255, 0, 0.5);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -61,6 +72,7 @@
   <div class="title-container">
     <div class="matrix-title" id="matrixTitle">BIGLONGS</div>
   </div>
+  <div id="mouseCursor"></div>
 
   <script>
     // Get the canvas element
@@ -91,65 +103,30 @@
       drops[i] = Math.floor(Math.random() * canvas.height / fontSize) * -1;
     }
 
-    // Draw function
-    function draw() {
-      // Black background with opacity for trail effect
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Mouse interaction elements
+    const mouseCursor = document.getElementById('mouseCursor');
+    const mouseEffect = document.getElementById('mouseEffect');
+    
+    // Mouse position
+    let mouseX = -1000;
+    let mouseY = -1000;
+    let isMouseActive = false;
+    
+    // Track mouse movement
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
       
-      // For each column
-      for (let i = 0; i < drops.length; i++) {
-        // Pick a random character
-        const char = characters[Math.floor(Math.random() * characters.length)];
-        
-        // Set rainbow colors - each column has its own hue that changes over time
-        if (drops[i] > 0) {
-          // Calculate a unique hue for each column that shifts slowly over time
-          const baseHue = (i * 5 + performance.now() / 100) % 360;
-          
-          // Head is more saturated and brighter than the trailing characters
-          const saturation = drops[i] === 1 ? 100 : 80;
-          const lightness = drops[i] === 1 ? 60 : 40;
-          
-          ctx.fillStyle = `hsl(${baseHue}, ${saturation}%, ${lightness}%)`;
-          
-          // Draw the character
-          ctx.font = `${fontSize}px monospace`;
-          ctx.fillText(char, i * fontSize, drops[i] * fontSize);
-        }
-        
-        // Move the drop down
-        drops[i]++;
-        
-        // If the drop reaches the bottom or randomly, reset it
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
-        }
-        
-        // Randomize starting position for new drops
-        if (drops[i] === 0 && Math.random() > 0.5) {
-          drops[i] = -Math.floor(Math.random() * 5);
-        }
-      }
-    }
-
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      // Update cursor position
+      mouseCursor.style.left = mouseX + 'px';
+      mouseCursor.style.top = mouseY + 'px';
       
-      // Recalculate columns
-      const newColumns = Math.floor(canvas.width / fontSize);
-      
-      // Add new drops if necessary
-      if (newColumns > drops.length) {
-        for (let i = drops.length; i < newColumns; i++) {
-          drops[i] = Math.floor(Math.random() * canvas.height / fontSize) * -1;
-        }
-      }
-      
-      // Trim drops array if window got smaller
-      drops.length = newColumns;
+      isMouseActive = true;
+    });
+    
+    // Handle mouse leaving window
+    document.addEventListener('mouseout', () => {
+      isMouseActive = false;
     });
 
     // Matrix title effect
@@ -201,6 +178,89 @@
     
     // Start title animation
     animateTitle();
+
+    // Draw function
+    function draw() {
+      // Black background with opacity for trail effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // For each column
+      for (let i = 0; i < drops.length; i++) {
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+        
+        // Check if mouse is active and if this column is near the mouse
+        let isMouseEffect = false;
+        if (isMouseActive) {
+          const distance = Math.sqrt(Math.pow(x - mouseX, 2) + Math.pow(y - mouseY, 2));
+          if (distance < 100) {
+            isMouseEffect = true;
+          }
+        }
+        
+        // Pick a random character
+        let char = characters[Math.floor(Math.random() * characters.length)];
+        
+        // If this drop is visible, draw it
+        if (drops[i] > 0 && drops[i] * fontSize < canvas.height) {
+          // Set color - green normally, slightly different shade near mouse
+          if (isMouseEffect) {
+            // Slightly brighter green near mouse
+            ctx.fillStyle = `rgba(40, 255, 100, 1)`;
+            ctx.font = `${fontSize * 1.1}px monospace`;
+            ctx.shadowBlur = 0;
+          } else {
+            // Normal green Matrix color
+            const brightness = drops[i] === 1 ? 255 : 120;
+            ctx.fillStyle = `rgba(0, ${brightness}, 70, 1)`;
+            ctx.font = `${fontSize}px monospace`;
+            ctx.shadowBlur = 0;
+          }
+          
+          // Draw the character
+          ctx.fillText(char, x, y);
+        }
+        
+        // Move drop down (slightly faster near mouse)
+        if (isMouseEffect) {
+          drops[i] += 1.5; // Move 1.5x faster near mouse
+        } else {
+          drops[i]++;
+        }
+        
+        // Reset drop if it's gone off screen
+        if (drops[i] * fontSize > canvas.height) {
+          if (Math.random() > 0.975) {
+            drops[i] = 0;
+          } else {
+            drops[i] = -Math.floor(Math.random() * 5);
+          }
+        }
+      }
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
+      // Recalculate columns
+      const newColumns = Math.floor(canvas.width / fontSize);
+      
+      // Add new drops if necessary
+      if (newColumns > drops.length) {
+        for (let i = drops.length; i < newColumns; i++) {
+          drops[i] = Math.floor(Math.random() * canvas.height / fontSize) * -1;
+        }
+      }
+      
+      // Trim drops array if window got smaller
+      drops.length = newColumns;
+    });
+
+    // Run the animation at 30fps
+    setInterval(draw, 33);
   </script>
 </body>
 </html>
