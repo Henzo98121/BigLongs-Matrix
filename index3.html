@@ -1,0 +1,207 @@
+// Run the animation at 30fps
+    setInterval(draw, 33);<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matrix Text Rain</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: black;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: monospace;
+      position: relative;
+    }
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    .title-container {
+      position: absolute;
+      z-index: 2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .matrix-title {
+      font-family: monospace;
+      font-size: 8vw;
+      font-weight: bold;
+      letter-spacing: 0.5vw;
+      text-shadow: 0 0 5px currentColor;
+      color: transparent;
+      position: relative;
+    }
+    .matrix-title span {
+      position: relative;
+      opacity: 0.9;
+    }
+    @keyframes glowingTitle {
+      0% { color: hsl(120, 100%, 50%); }
+      25% { color: hsl(160, 100%, 50%); }
+      50% { color: hsl(200, 100%, 50%); }
+      75% { color: hsl(140, 100%, 50%); }
+      100% { color: hsl(120, 100%, 50%); }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+  <div class="title-container">
+    <div class="matrix-title" id="matrixTitle">BIGLONGS</div>
+  </div>
+
+  <script>
+    // Get the canvas element
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+
+    // Set canvas to full window size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Matrix characters - taken from Matrix movie
+    const matrixChars = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%\"'#&_(),.;:?!\\|{}<>[]^~";
+    
+    // Convert string to array of characters
+    const characters = matrixChars.split('');
+    
+    // Font size
+    const fontSize = 16;
+    
+    // Calculate number of columns
+    const columns = Math.floor(canvas.width / fontSize);
+    
+    // Array for drops - one per column
+    const drops = [];
+    
+    // Initialize all drops to start at a random position
+    for (let i = 0; i < columns; i++) {
+      drops[i] = Math.floor(Math.random() * canvas.height / fontSize) * -1;
+    }
+
+    // Draw function
+    function draw() {
+      // Black background with opacity for trail effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // For each column
+      for (let i = 0; i < drops.length; i++) {
+        // Pick a random character
+        const char = characters[Math.floor(Math.random() * characters.length)];
+        
+        // Set rainbow colors - each column has its own hue that changes over time
+        if (drops[i] > 0) {
+          // Calculate a unique hue for each column that shifts slowly over time
+          const baseHue = (i * 5 + performance.now() / 100) % 360;
+          
+          // Head is more saturated and brighter than the trailing characters
+          const saturation = drops[i] === 1 ? 100 : 80;
+          const lightness = drops[i] === 1 ? 60 : 40;
+          
+          ctx.fillStyle = `hsl(${baseHue}, ${saturation}%, ${lightness}%)`;
+          
+          // Draw the character
+          ctx.font = `${fontSize}px monospace`;
+          ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+        }
+        
+        // Move the drop down
+        drops[i]++;
+        
+        // If the drop reaches the bottom or randomly, reset it
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        
+        // Randomize starting position for new drops
+        if (drops[i] === 0 && Math.random() > 0.5) {
+          drops[i] = -Math.floor(Math.random() * 5);
+        }
+      }
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
+      // Recalculate columns
+      const newColumns = Math.floor(canvas.width / fontSize);
+      
+      // Add new drops if necessary
+      if (newColumns > drops.length) {
+        for (let i = drops.length; i < newColumns; i++) {
+          drops[i] = Math.floor(Math.random() * canvas.height / fontSize) * -1;
+        }
+      }
+      
+      // Trim drops array if window got smaller
+      drops.length = newColumns;
+    });
+
+    // Matrix title effect
+    const title = document.getElementById('matrixTitle');
+    const titleText = title.textContent;
+    title.textContent = '';
+    
+    // Create spans for each character
+    for (let i = 0; i < titleText.length; i++) {
+      const span = document.createElement('span');
+      span.textContent = titleText[i];
+      span.style.color = 'hsl(120, 100%, 50%)';
+      span.style.textShadow = '0 0 5px currentColor';
+      title.appendChild(span);
+    }
+    
+    // Matrix effect for title
+    function animateTitle() {
+      const spans = title.querySelectorAll('span');
+      
+      // Randomly change some characters
+      for (let i = 0; i < spans.length; i++) {
+        // Small chance to "glitch" a character
+        if (Math.random() < 0.01) {
+          const originalChar = titleText[i];
+          const glitchChar = characters[Math.floor(Math.random() * characters.length)];
+          
+          spans[i].textContent = glitchChar;
+          
+          // After a delay, change back to original
+          setTimeout(() => {
+            spans[i].textContent = originalChar;
+          }, 100 + Math.random() * 150);
+        }
+        
+        // Small chance to flicker brightness
+        if (Math.random() < 0.03) {
+          const brightness = 40 + Math.floor(Math.random() * 60);
+          spans[i].style.color = `hsl(120, 100%, ${brightness}%)`;
+          
+          setTimeout(() => {
+            spans[i].style.color = 'hsl(120, 100%, 50%)';
+          }, 50 + Math.random() * 100);
+        }
+      }
+      
+      requestAnimationFrame(animateTitle);
+    }
+    
+    // Start title animation
+    animateTitle();
+  </script>
+</body>
+</html>
